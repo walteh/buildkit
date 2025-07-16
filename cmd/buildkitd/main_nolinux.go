@@ -1,6 +1,6 @@
 //go:build !linux
 
-package main
+package buildkitd_main
 
 import (
 	"os"

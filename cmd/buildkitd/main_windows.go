@@ -1,6 +1,6 @@
 //go:build windows
 
-package main
+package buildkitd_main
 
 import (
 	"crypto/tls"

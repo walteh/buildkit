@@ -1,6 +1,6 @@
 //go:build !windows
 
-package main
+package buildkitd_main
 
 import (
 	runcoptions "github.com/containerd/containerd/api/types/runc/options"

@@ -1,4 +1,4 @@
-package main
+package buildkitd_main
 
 import (
 	runhcsoptions "github.com/Microsoft/hcsshim/cmd/containerd-shim-runhcs-v1/options"

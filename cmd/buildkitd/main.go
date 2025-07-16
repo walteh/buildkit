@@ -1,4 +1,4 @@
-package main
+package buildkitd_main
 
 import (
 	"context"
@@ -114,7 +114,7 @@ func registerWorkerInitializer(wi workerInitializer, flags ...cli.Flag) {
 	appFlags = append(appFlags, flags...)
 }
 
-func main() {
+func Main() {
 	cli.VersionPrinter = func(c *cli.Context) {
 		fmt.Println(c.App.Name, version.Package, c.App.Version, version.Revision)
 	}

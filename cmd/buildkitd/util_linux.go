@@ -1,4 +1,4 @@
-package main
+package buildkitd_main
 
 import (
 	"strings"
