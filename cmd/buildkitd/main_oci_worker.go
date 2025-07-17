@@ -1,5 +1,3 @@
-//go:build linux
-
 package buildkitd_main
 
 import (
@@ -8,7 +6,6 @@ import (
 	"maps"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -21,14 +18,14 @@ import (
 	"github.com/containerd/containerd/v2/pkg/dialer"
 	"github.com/containerd/containerd/v2/pkg/reference"
 	"github.com/containerd/containerd/v2/plugins/snapshots/native"
-	"github.com/containerd/containerd/v2/plugins/snapshots/overlay"
-	"github.com/containerd/containerd/v2/plugins/snapshots/overlay/overlayutils"
-	fuseoverlayfs "github.com/containerd/fuse-overlayfs-snapshotter/v2"
-	sgzfs "github.com/containerd/stargz-snapshotter/fs"
-	sgzconf "github.com/containerd/stargz-snapshotter/fs/config"
-	sgzlayer "github.com/containerd/stargz-snapshotter/fs/layer"
+
+	// "github.com/containerd/containerd/v2/plugins/snapshots/overlay"
+	// "github.com/containerd/containerd/v2/plugins/snapshots/overlay/overlayutils"
+	// fuseoverlayfs "github.com/containerd/fuse-overlayfs-snapshotter/v2"
+	// sgzfs "github.com/containerd/stargz-snapshotter/fs"
+
 	sgzsource "github.com/containerd/stargz-snapshotter/fs/source"
-	remotesn "github.com/containerd/stargz-snapshotter/snapshot"
+	// remotesn "github.com/containerd/stargz-snapshotter/snapshot"
 	"github.com/moby/buildkit/cmd/buildkitd/config"
 	"github.com/moby/buildkit/executor/oci"
 	"github.com/moby/buildkit/session"
@@ -41,9 +38,7 @@ import (
 	"github.com/moby/buildkit/worker/base"
 	"github.com/moby/buildkit/worker/runc"
 	"github.com/moby/sys/userns"
-	"github.com/pelletier/go-toml"
 	"github.com/pkg/errors"
-	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli"
 	"golang.org/x/sync/semaphore"
 	"google.golang.org/grpc"
@@ -378,17 +373,17 @@ func snapshotterFactory(commonRoot string, cfg config.OCIConfig, sm *session.Man
 	}
 
 	if name == "auto" {
-		if err := overlayutils.Supported(commonRoot); err == nil {
-			name = "overlayfs"
-		} else {
-			bklog.L.Debugf("auto snapshotter: overlayfs is not available for %s, trying fuse-overlayfs: %v", commonRoot, err)
-			if err2 := fuseoverlayfs.Supported(commonRoot); err2 == nil {
-				name = "fuse-overlayfs"
-			} else {
-				bklog.L.Debugf("auto snapshotter: fuse-overlayfs is not available for %s, falling back to native: %v", commonRoot, err2)
-				name = "native"
-			}
-		}
+		// if err := overlayutils.Supported(commonRoot); err == nil {
+		// 	name = "overlayfs"
+		// } else {
+		// 	bklog.L.Debugf("auto snapshotter: overlayfs is not available for %s, trying fuse-overlayfs: %v", commonRoot, err)
+		// 	if err2 := fuseoverlayfs.Supported(commonRoot); err2 == nil {
+		// 		name = "fuse-overlayfs"
+		// 	} else {
+		// bklog.L.Debugf("auto snapshotter: fuse-overlayfs is not available for %s, falling back to native: %v", commonRoot, err2)
+		name = "native"
+		// 	}
+		// }
 		bklog.L.Infof("auto snapshotter: using %s", name)
 	}
 
@@ -398,54 +393,54 @@ func snapshotterFactory(commonRoot string, cfg config.OCIConfig, sm *session.Man
 	switch name {
 	case "native":
 		snFactory.New = native.NewSnapshotter
-	case "overlayfs": // not "overlay", for consistency with containerd snapshotter plugin ID.
-		snFactory.New = func(root string) (ctdsnapshot.Snapshotter, error) {
-			return overlay.NewSnapshotter(root, overlay.AsynchronousRemove)
-		}
-	case "fuse-overlayfs":
-		snFactory.New = func(root string) (ctdsnapshot.Snapshotter, error) {
-			// no Opt (AsynchronousRemove is untested for fuse-overlayfs)
-			return fuseoverlayfs.NewSnapshotter(root)
-		}
-	case "stargz":
-		sgzCfg := sgzconf.Config{}
-		if cfg.StargzSnapshotterConfig != nil {
-			// In order to keep the stargz Config type (and dependency) out of
-			// the main BuildKit config, the main config Unmarshalls it into a
-			// generic map[string]interface{}. Here we convert it back into TOML
-			// tree, and unmarshal it to the actual type.
-			t, err := toml.TreeFromMap(cfg.StargzSnapshotterConfig)
-			if err != nil {
-				return snFactory, errors.Wrapf(err, "failed to parse stargz config")
-			}
-			err = t.Unmarshal(&sgzCfg)
-			if err != nil {
-				return snFactory, errors.Wrapf(err, "failed to parse stargz config")
-			}
-		}
-		snFactory.New = func(root string) (ctdsnapshot.Snapshotter, error) {
-			userxattr, err := overlayutils.NeedsUserXAttr(root)
-			if err != nil {
-				bklog.L.WithError(err).Warnf("cannot detect whether \"userxattr\" option needs to be used, assuming to be %v", userxattr)
-			}
-			opq := sgzlayer.OverlayOpaqueTrusted
-			if userxattr {
-				opq = sgzlayer.OverlayOpaqueUser
-			}
-			fs, err := sgzfs.NewFilesystem(filepath.Join(root, "stargz"),
-				sgzCfg,
-				// Source info based on the buildkit's registry config and session
-				sgzfs.WithGetSources(sourceWithSession(hosts, sm)),
-				sgzfs.WithMetricsLogLevel(logrus.DebugLevel),
-				sgzfs.WithOverlayOpaqueType(opq),
-			)
-			if err != nil {
-				return nil, err
-			}
-			return remotesn.NewSnapshotter(context.Background(),
-				filepath.Join(root, "snapshotter"),
-				fs, remotesn.AsynchronousRemove, remotesn.NoRestore)
-		}
+	// case "overlayfs": // not "overlay", for consistency with containerd snapshotter plugin ID.
+	// 	snFactory.New = func(root string) (ctdsnapshot.Snapshotter, error) {
+	// 		return overlay.NewSnapshotter(root, overlay.AsynchronousRemove)
+	// 	}
+	// case "fuse-overlayfs":
+	// 	snFactory.New = func(root string) (ctdsnapshot.Snapshotter, error) {
+	// 		// no Opt (AsynchronousRemove is untested for fuse-overlayfs)
+	// 		return fuseoverlayfs.NewSnapshotter(root)
+	// 	}
+	// case "stargz":
+	// 	sgzCfg := sgzconf.Config{}
+	// 	if cfg.StargzSnapshotterConfig != nil {
+	// 		// In order to keep the stargz Config type (and dependency) out of
+	// 		// the main BuildKit config, the main config Unmarshalls it into a
+	// 		// generic map[string]interface{}. Here we convert it back into TOML
+	// 		// tree, and unmarshal it to the actual type.
+	// 		t, err := toml.TreeFromMap(cfg.StargzSnapshotterConfig)
+	// 		if err != nil {
+	// 			return snFactory, errors.Wrapf(err, "failed to parse stargz config")
+	// 		}
+	// 		err = t.Unmarshal(&sgzCfg)
+	// 		if err != nil {
+	// 			return snFactory, errors.Wrapf(err, "failed to parse stargz config")
+	// 		}
+	// 	}
+	// 	snFactory.New = func(root string) (ctdsnapshot.Snapshotter, error) {
+	// 		userxattr, err := overlayutils.NeedsUserXAttr(root)
+	// 		if err != nil {
+	// 			bklog.L.WithError(err).Warnf("cannot detect whether \"userxattr\" option needs to be used, assuming to be %v", userxattr)
+	// 		}
+	// 		opq := sgzlayer.OverlayOpaqueTrusted
+	// 		if userxattr {
+	// 			opq = sgzlayer.OverlayOpaqueUser
+	// 		}
+	// 		fs, err := sgzfs.NewFilesystem(filepath.Join(root, "stargz"),
+	// 			sgzCfg,
+	// 			// Source info based on the buildkit's registry config and session
+	// 			sgzfs.WithGetSources(sourceWithSession(hosts, sm)),
+	// 			sgzfs.WithMetricsLogLevel(logrus.DebugLevel),
+	// 			sgzfs.WithOverlayOpaqueType(opq),
+	// 		)
+	// 		if err != nil {
+	// 			return nil, err
+	// 		}
+	// 		return remotesn.NewSnapshotter(context.Background(),
+	// 			filepath.Join(root, "snapshotter"),
+	// 			fs, remotesn.AsynchronousRemove, remotesn.NoRestore)
+	// 	}
 	default:
 		return snFactory, errors.Errorf("unknown snapshotter name: %q", name)
 	}

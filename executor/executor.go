@@ -7,6 +7,7 @@ import (
 	"syscall"
 
 	"github.com/containerd/containerd/v2/core/mount"
+	"github.com/containerd/containerd/v2/pkg/oci"
 	resourcestypes "github.com/moby/buildkit/executor/resources/types"
 	"github.com/moby/buildkit/solver/pb"
 	"github.com/moby/sys/user"
@@ -68,6 +69,10 @@ type Executor interface {
 	// Exec will start a process in container matching `id`. An error will be returned
 	// if the container failed to start (via Run) or has exited before Exec is called.
 	Exec(ctx context.Context, id string, process ProcessInfo) error
+}
+
+type Initializer interface {
+	Initialize(ctx context.Context, opt *oci.Spec) error
 }
 
 type HostIP struct {
