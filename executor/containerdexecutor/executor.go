@@ -195,6 +195,8 @@ func (w *containerdExecutor) Run(ctx context.Context, id string, root executor.M
 		cioOpts = append(cioOpts, cio.WithTerminal)
 	}
 
+	cioOpts = append(cioOpts, cio.WithFIFODir(filepath.Join(w.root, "fifo")))
+
 	taskOpts, err := details.getTaskOpts()
 	if err != nil {
 		return nil, err

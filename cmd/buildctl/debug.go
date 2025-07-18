@@ -1,4 +1,4 @@
-package main
+package buildctl_main
 
 import (
 	"github.com/moby/buildkit/cmd/buildctl/debug"

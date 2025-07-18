@@ -20,7 +20,6 @@ import (
 	"context"
 
 	"github.com/containerd/containerd/v2/core/containers"
-	"github.com/containerd/containerd/v2/pkg/cap"
 	specs "github.com/opencontainers/runtime-spec/specs-go"
 )
 
@@ -58,22 +57,6 @@ func WithDevices(devicePath, containerPath, permissions string) SpecOpts {
 		}
 		return nil
 	}
-}
-
-// WithAllCurrentCapabilities propagates the effective capabilities of the caller process to the container process.
-// The capability set may differ from WithAllKnownCapabilities when running in a container.
-var WithAllCurrentCapabilities = func(ctx context.Context, client Client, c *containers.Container, s *Spec) error {
-	caps, err := cap.Current()
-	if err != nil {
-		return err
-	}
-	return WithCapabilities(caps)(ctx, client, c, s)
-}
-
-// WithAllKnownCapabilities sets all the known linux capabilities for the container process
-var WithAllKnownCapabilities = func(ctx context.Context, client Client, c *containers.Container, s *Spec) error {
-	caps := cap.Known()
-	return WithCapabilities(caps)(ctx, client, c, s)
 }
 
 func escapeAndCombineArgs(args []string) string {

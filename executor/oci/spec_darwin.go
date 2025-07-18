@@ -1,58 +1,39 @@
 package oci
 
 import (
+	"context"
+
+	"github.com/containerd/containerd/v2/core/containers"
 	"github.com/containerd/containerd/v2/core/mount"
 	"github.com/containerd/containerd/v2/pkg/oci"
 	"github.com/containerd/continuity/fs"
-	"github.com/moby/buildkit/solver/llbsolver/cdidevices"
-	"github.com/moby/buildkit/solver/pb"
-	"github.com/moby/sys/user"
-	"github.com/opencontainers/runtime-spec/specs-go"
-	"github.com/pkg/errors"
+	specs "github.com/opencontainers/runtime-spec/specs-go"
 )
 
-func withProcessArgs(args ...string) oci.SpecOpts {
-	return oci.WithProcessArgs(args...)
-}
+// func sub(m mount.Mount, subPath string) (mount.Mount, func() error, error) {
+// 	src, err := fs.RootPath(m.Source, subPath)
+// 	if err != nil {
+// 		return mount.Mount{}, nil, err
+// 	}
+// 	m.Source = src
+// 	return m, func() error { return nil }, nil
+// }
 
-func generateMountOpts(_, _ string) []oci.SpecOpts {
-	return nil
-}
+// func generateCDIOpts(_ *cdidevices.Manager, devices []*pb.CDIDevice) ([]oci.SpecOpts, error) {
+// 	if len(devices) == 0 {
+// 		return nil, nil
+// 	}
+// 	return nil, errors.New("no support for CDI on Darwin")
+// }
 
-func generateSecurityOpts(mode pb.SecurityMode, _ string, _ bool) ([]oci.SpecOpts, error) {
-	return nil, nil
-}
-
-func generateProcessModeOpts(mode ProcessMode) ([]oci.SpecOpts, error) {
-	return nil, nil
-}
-
-func generateIDmapOpts(idmap *user.IdentityMapping) ([]oci.SpecOpts, error) {
-	if idmap == nil {
-		return nil, nil
+// withDefaultProfile sets the default seccomp profile to the spec.
+// Note: must follow the setting of process capabilities
+func withDefaultProfile() oci.SpecOpts {
+	return func(_ context.Context, _ oci.Client, _ *containers.Container, s *specs.Spec) error {
+		var err error
+		// s.Linux.Seccomp, err = seccomp.GetDefaultProfile(s)
+		return err
 	}
-	return nil, errors.New("no support for IdentityMapping on Darwin")
-}
-
-func generateRlimitOpts(ulimits []*pb.Ulimit) ([]oci.SpecOpts, error) {
-	if len(ulimits) == 0 {
-		return nil, nil
-	}
-	return nil, errors.New("no support for POSIXRlimit on Darwin")
-}
-
-// tracing is not implemented on Darwin
-func getTracingSocketMount(_ string) *specs.Mount {
-	return nil
-}
-
-// tracing is not implemented on Darwin
-func getTracingSocket() string {
-	return ""
-}
-
-func cgroupV2NamespaceSupported() bool {
-	return false
 }
 
 func sub(m mount.Mount, subPath string) (mount.Mount, func() error, error) {
@@ -62,11 +43,4 @@ func sub(m mount.Mount, subPath string) (mount.Mount, func() error, error) {
 	}
 	m.Source = src
 	return m, func() error { return nil }, nil
-}
-
-func generateCDIOpts(_ *cdidevices.Manager, devices []*pb.CDIDevice) ([]oci.SpecOpts, error) {
-	if len(devices) == 0 {
-		return nil, nil
-	}
-	return nil, errors.New("no support for CDI on Darwin")
 }

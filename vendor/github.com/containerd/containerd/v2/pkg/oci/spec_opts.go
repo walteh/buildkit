@@ -39,11 +39,28 @@ import (
 	"github.com/containerd/containerd/v2/core/content"
 	"github.com/containerd/containerd/v2/core/images"
 	"github.com/containerd/containerd/v2/core/mount"
+	"github.com/containerd/containerd/v2/pkg/cap"
 	"github.com/containerd/containerd/v2/pkg/namespaces"
 )
 
 // SpecOpts sets spec specific information to a newly generated OCI spec
 type SpecOpts func(context.Context, Client, *containers.Container, *Spec) error
+
+// WithAllCurrentCapabilities propagates the effective capabilities of the caller process to the container process.
+// The capability set may differ from WithAllKnownCapabilities when running in a container.
+var WithAllCurrentCapabilities = func(ctx context.Context, client Client, c *containers.Container, s *Spec) error {
+	caps, err := cap.Current()
+	if err != nil {
+		return err
+	}
+	return WithCapabilities(caps)(ctx, client, c, s)
+}
+
+// WithAllKnownCapabilities sets all the known linux capabilities for the container process
+var WithAllKnownCapabilities = func(ctx context.Context, client Client, c *containers.Container, s *Spec) error {
+	caps := cap.Known()
+	return WithCapabilities(caps)(ctx, client, c, s)
+}
 
 // Compose converts a sequence of spec operations into a single operation
 func Compose(opts ...SpecOpts) SpecOpts {

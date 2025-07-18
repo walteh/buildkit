@@ -30,6 +30,12 @@ func serve(ctx context.Context, grpcServer *grpc.Server, conn net.Conn) {
 	(&http2.Server{}).ServeConn(conn, &http2.ServeConnOpts{Handler: grpcServer})
 }
 
+var hackedClientOpts = []grpc.DialOption{}
+
+func AddHackedClientOpts(opts ...grpc.DialOption) {
+	hackedClientOpts = append(hackedClientOpts, opts...)
+}
+
 func grpcClientConn(ctx context.Context, conn net.Conn) (context.Context, *grpc.ClientConn, error) {
 	var dialCount int64
 	dialer := grpc.WithContextDialer(func(ctx context.Context, addr string) (net.Conn, error) {
@@ -47,6 +53,8 @@ func grpcClientConn(ctx context.Context, conn net.Conn) (context.Context, *grpc.
 		grpc.WithUnaryInterceptor(grpcerrors.UnaryClientInterceptor),
 		grpc.WithStreamInterceptor(grpcerrors.StreamClientInterceptor),
 	}
+
+	dialOpts = append(dialOpts, hackedClientOpts...)
 
 	if span := trace.SpanFromContext(ctx); span.SpanContext().IsValid() {
 		statsHandler := tracing.ClientStatsHandler(

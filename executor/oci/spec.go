@@ -139,9 +139,21 @@ func GenerateSpec(ctx context.Context, meta executor.Meta, mounts []executor.Mou
 		}
 	}
 
-	s, err := oci.GenerateSpec(ctx, nil, c, opts...)
-	if err != nil {
-		return nil, nil, errors.WithStack(err)
+	var s *oci.Spec
+	var err error
+
+	if runtime.GOOS == "darwin" && runtime.GOARCH == "arm64" {
+		// note: if we use the WithPlatform option instead of calling this other funciton,
+		// we end up with no .Process.Args in our vm for some reason
+		s, err = oci.GenerateSpecWithPlatform(ctx, nil, "linux/arm64", c, opts...)
+		if err != nil {
+			return nil, nil, errors.WithStack(err)
+		}
+	} else {
+		s, err = oci.GenerateSpec(ctx, nil, c, opts...)
+		if err != nil {
+			return nil, nil, errors.WithStack(err)
+		}
 	}
 
 	if cgroupV2NamespaceSupported() {

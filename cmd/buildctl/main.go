@@ -1,4 +1,4 @@
-package main
+package buildctl_main
 
 import (
 	"fmt"
@@ -35,7 +35,17 @@ func init() {
 	otel.SetErrorHandler(skipErrors{})
 }
 
-func main() {
+func BuildctlMain() {
+
+	app, err := BuildctlApp()
+	if err != nil {
+		HandleErr(true, err)
+	}
+
+	HandleErr(true, app.Run(os.Args))
+}
+
+func BuildctlApp() (*cli.App, error) {
 	cli.VersionPrinter = func(c *cli.Context) {
 		fmt.Println(c.App.Name, version.Package, c.App.Version, version.Revision)
 	}
@@ -131,15 +141,15 @@ func main() {
 	}
 
 	if err := bccommon.AttachAppContext(app); err != nil {
-		handleErr(debugEnabled, err)
+		return nil, err
 	}
 
 	profiler.Attach(app)
 
-	handleErr(debugEnabled, app.Run(os.Args))
+	return app, nil
 }
 
-func handleErr(debug bool, err error) {
+func HandleErr(debug bool, err error) {
 	if err == nil {
 		return
 	}

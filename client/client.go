@@ -40,6 +40,12 @@ type ClientOpt interface {
 	isClientOpt()
 }
 
+var hackedClientOpts []grpc.DialOption
+
+func AddHackedClientOpts(opts ...grpc.DialOption) {
+	hackedClientOpts = append(hackedClientOpts, opts...)
+}
+
 // New returns a new buildkit client. Address can be empty for the system-default address.
 func New(ctx context.Context, address string, opts ...ClientOpt) (*Client, error) {
 	gopts := []grpc.DialOption{
@@ -150,6 +156,8 @@ func New(ctx context.Context, address string, opts ...ClientOpt) (*Client, error
 	gopts = append(gopts, grpc.WithUnaryInterceptor(grpcerrors.UnaryClientInterceptor))
 	gopts = append(gopts, grpc.WithStreamInterceptor(grpcerrors.StreamClientInterceptor))
 	gopts = append(gopts, customDialOptions...)
+
+	gopts = append(gopts, hackedClientOpts...)
 
 	// ignore SA1019 NewClient has different behavior and needs to be tested
 	//nolint:staticcheck

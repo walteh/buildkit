@@ -1,4 +1,4 @@
-package main
+package buildctl_main
 
 import (
 	"testing"

@@ -114,7 +114,7 @@ func registerWorkerInitializer(wi workerInitializer, flags ...cli.Flag) {
 	appFlags = append(appFlags, flags...)
 }
 
-func Main() {
+func App(serverOptions ...grpc.ServerOption) *cli.App {
 	cli.VersionPrinter = func(c *cli.Context) {
 		fmt.Println(c.App.Name, version.Package, c.App.Version, version.Revision)
 	}
@@ -239,7 +239,11 @@ func Main() {
 		// TODO: On Windows this always returns -1. The actual "are you admin" check is very Windows-specific.
 		// See https://github.com/golang/go/issues/28804#issuecomment-505326268 for the "short" version.
 		if os.Geteuid() > 0 {
-			return errors.New("rootless mode requires to be executed as the mapped root in a user namespace; you may use RootlessKit for setting up the namespace")
+			if runtime.GOOS == "darwin" {
+				bklog.L.Warn("bypassing rootless mode check on macOS")
+			} else {
+				return errors.New("rootless mode requires to be executed as the mapped root in a user namespace; you may use RootlessKit for setting up the namespace")
+			}
 		}
 		ctx, cancel := context.WithCancelCause(appcontext.Context())
 		defer func() { cancel(errors.WithStack(context.Canceled)) }()
@@ -254,22 +258,22 @@ func Main() {
 			return err
 		}
 
-		logFormat := cfg.Log.Format
-		switch logFormat {
-		case "json":
-			logrus.SetFormatter(&logrus.JSONFormatter{})
-		case "text", "":
-			logrus.SetFormatter(&logrus.TextFormatter{FullTimestamp: true})
-		default:
-			return errors.Errorf("unsupported log type %q", logFormat)
-		}
+		// logFormat := cfg.Log.Format
+		// switch logFormat {
+		// case "json":
+		// 	logrus.SetFormatter(&logrus.JSONFormatter{})
+		// case "text", "":
+		// 	logrus.SetFormatter(&logrus.TextFormatter{FullTimestamp: true})
+		// default:
+		// 	return errors.Errorf("unsupported log type %q", logFormat)
+		// }
 
-		if cfg.Debug {
-			logrus.SetLevel(logrus.DebugLevel)
-		}
-		if cfg.Trace {
-			logrus.SetLevel(logrus.TraceLevel)
-		}
+		// if cfg.Debug {
+		// 	logrus.SetLevel(logrus.DebugLevel)
+		// }
+		// if cfg.Trace {
+		// 	logrus.SetLevel(logrus.TraceLevel)
+		// }
 
 		if sc := cfg.System; sc != nil {
 			if v := sc.PlatformsCacheMaxAge; v != nil {
@@ -307,7 +311,7 @@ func Main() {
 			grpc.MaxRecvMsgSize(defaults.DefaultMaxRecvMsgSize),
 			grpc.MaxSendMsgSize(defaults.DefaultMaxSendMsgSize),
 		}
-		server := grpc.NewServer(opts...)
+		server := grpc.NewServer(append(opts, serverOptions...)...)
 
 		// relative path does not work with nightlyone/lockfile
 		root, err := filepath.Abs(cfg.Root)
@@ -424,6 +428,12 @@ func Main() {
 	}
 
 	profiler.Attach(app)
+
+	return app
+}
+
+func Main() {
+	app := App()
 
 	if err := app.Run(os.Args); err != nil {
 		fmt.Fprintf(os.Stderr, "buildkitd: %+v\n", err)

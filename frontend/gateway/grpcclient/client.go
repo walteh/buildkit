@@ -1234,6 +1234,12 @@ func (r *reference) StatFile(ctx context.Context, req client.StatRequest) (*fsty
 	return resp.Stat, nil
 }
 
+var hackedClientOpts = []grpc.DialOption{}
+
+func AddHackedClientOpts(opts ...grpc.DialOption) {
+	hackedClientOpts = append(hackedClientOpts, opts...)
+}
+
 func grpcClientConn(ctx context.Context) (context.Context, *grpc.ClientConn, error) {
 	dialOpts := []grpc.DialOption{
 		grpc.WithContextDialer(func(ctx context.Context, addr string) (net.Conn, error) {
@@ -1245,6 +1251,8 @@ func grpcClientConn(ctx context.Context) (context.Context, *grpc.ClientConn, err
 		grpc.WithDefaultCallOptions(grpc.MaxCallRecvMsgSize(16 << 20)),
 		grpc.WithDefaultCallOptions(grpc.MaxCallSendMsgSize(16 << 20)),
 	}
+
+	dialOpts = append(dialOpts, hackedClientOpts...)
 
 	//nolint:staticcheck // ignore SA1019 NewClient has different behavior and needs to be tested
 	cc, err := grpc.DialContext(ctx, "localhost", dialOpts...)

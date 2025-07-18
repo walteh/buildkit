@@ -18,19 +18,13 @@
 
 package oci
 
-import (
-	"context"
+// // WithAllCurrentCapabilities propagates the effective capabilities of the caller process to the container process.
+// // The capability set may differ from WithAllKnownCapabilities when running in a container.
+// var WithAllCurrentCapabilities = func(ctx context.Context, client Client, c *containers.Container, s *Spec) error {
+// 	return WithCapabilities(nil)(ctx, client, c, s)
+// }
 
-	"github.com/containerd/containerd/v2/core/containers"
-)
-
-// WithAllCurrentCapabilities propagates the effective capabilities of the caller process to the container process.
-// The capability set may differ from WithAllKnownCapabilities when running in a container.
-var WithAllCurrentCapabilities = func(ctx context.Context, client Client, c *containers.Container, s *Spec) error {
-	return WithCapabilities(nil)(ctx, client, c, s)
-}
-
-// WithAllKnownCapabilities sets all the known linux capabilities for the container process
-var WithAllKnownCapabilities = func(ctx context.Context, client Client, c *containers.Container, s *Spec) error {
-	return WithCapabilities(nil)(ctx, client, c, s)
-}
+// // WithAllKnownCapabilities sets all the known linux capabilities for the container process
+// var WithAllKnownCapabilities = func(ctx context.Context, client Client, c *containers.Container, s *Spec) error {
+// 	return WithCapabilities(nil)(ctx, client, c, s)
+// }

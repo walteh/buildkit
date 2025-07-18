@@ -139,6 +139,16 @@ func (w *containerdExecutor) createOCISpec(ctx context.Context, id, resolvConf, 
 		opts = append(opts, containerdoci.WithRootFSReadonly())
 	}
 
+	// if runtime.GOOS == "darwin" && runtime.GOARCH == "arm64" {
+	// 	opts = append(opts,
+	// 		containerdoci.WithDefaultSpecForPlatform("linux/arm64"),
+	// 	)
+	// } else {
+	// 	opts = append(opts,
+	// 		containerdoci.WithDefaultSpec(),
+	// 	)
+	// }
+
 	processMode := oci.ProcessSandbox // FIXME(AkihiroSuda)
 	spec, cleanup, err := oci.GenerateSpec(ctx, meta, mounts, id, resolvConf, hostsFile, namespace, w.cgroupParent, processMode, nil, w.apparmorProfile, w.selinux, w.traceSocket, w.cdiManager, opts...)
 	if err != nil {
